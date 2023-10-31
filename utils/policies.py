@@ -60,32 +60,53 @@ class BasePolicy(nn.Module):
 
 class DiscretePolicy(BasePolicy): #离散策略
     """
-    Policy Network for discrete action spaces
+    离散行动空间策略网络
     """
+    #接受任意数量的位置参数（*args）和关键字参数（**kwargs）
     def __init__(self, *args, **kwargs):
         super(DiscretePolicy, self).__init__(*args, **kwargs)
-
+    """
+    obs: 代表输入的观察值（observations）或状态（states）。这是策略网络的输入，用于决定输出的动作
+    sample=True: 一个布尔值参数，表示是否使用采样策略
+    return_all_probs=False: 一个布尔值参数，表示是否返回所有可能动作的概率分布。
+                            如果为True，策略网络将会返回所有动作的概率分布.
+    return_log_pi=False: 一个布尔值参数，表示是否返回选择动作的对数概率。
+                         如果为True，策略网络将会返回选择的动作的对数概率。
+    regularize=False: 一个布尔值参数，表示是否对策略网络进行正则化。
+                         如果为True，策略网络将会返回正则化项.
+    return_entropy=False: 一个布尔值参数，表示是否返回策略网络的熵(概率分布的混乱程度度量)
+    """
     def forward(self, obs, sample=True, return_all_probs=False,
                 return_log_pi=False, regularize=False,
                 return_entropy=False):
         out = super(DiscretePolicy, self).forward(obs)
+        #
         probs = F.softmax(out, dim=1)
+        # 检查模型参数是否在GPU上，用于后续操作的设备选择
         on_gpu = next(self.parameters()).is_cuda
-        if sample:
+        # 如果sample参数为True，表示需要从概率分布中采样动作
+        if sample: # ！！！
+            # 函数返回采样的动作的索引（int_act）和one-hot编码的动作（act）
             int_act, act = categorical_sample(probs, use_cuda=on_gpu)
         else:
+            # 使用onehot_from_logits函数，将概率分布probs转换为one-hot编码的动作
             act = onehot_from_logits(probs)
+        # 创建一个包含动作信息的列表rets，初始时只包含采样的动作或贪婪策略选择的动作
         rets = [act]
         if return_log_pi or return_entropy:
-            log_probs = F.log_softmax(out, dim=1)
+            log_probs = F.log_softmax(out, dim=1) # 计算输出的对数概率分布
         if return_all_probs:
-            rets.append(probs)
+            rets.append(probs) # 将所有动作的概率分布添加到rets列表
         if return_log_pi:
             # return log probability of selected action
+            # ！！！
             rets.append(log_probs.gather(1, int_act))
         if regularize:
+            #计算输出的平方的均值，通常作为正则化项添加到rets列表中
             rets.append([(out**2).mean()])
         if return_entropy:
+            #计算熵并将其添加到rets列表中
+            #取所有行的熵值的平均值，得到整个概率分布的熵
             rets.append(-(log_probs * probs).sum(1).mean())
         if len(rets) == 1:
             return rets[0]
