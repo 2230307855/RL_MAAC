@@ -9,25 +9,25 @@ import numpy as np
 def soft_update(target, source, tau):
     """
     Perform DDPG soft update (move target params toward source based on weight
-    factor tau)
+    factor tau) 执行 DDPG 软更新（根据权重因子 tau 将目标参数移向源）
     Inputs:
         target (torch.nn.Module): Net to copy parameters to
         source (torch.nn.Module): Net whose parameters to copy
-        tau (float, 0 < x < 1): Weight factor for update
+        tau (float, 0 < x < 1): Weight factor for update 更新的权重因子
     """
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
 
 # https://github.com/ikostrikov/pytorch-ddpg-naf/blob/master/ddpg.py#L15
-def hard_update(target, source):
+def hard_update(target, source): #将参数从源网络转移到目标网络
     """
-    Copy network parameters from source to target
+    Copy network parameters from source to target 将网络参数从源复制到目标
     Inputs:
-        target (torch.nn.Module): Net to copy parameters to
-        source (torch.nn.Module): Net whose parameters to copy
+        target (torch.nn.Module): Net to copy parameters to 要将参数复制到的网络
+        source (torch.nn.Module): Net whose parameters to copy 要复制参数的网络
     """
     for target_param, param in zip(target.parameters(), source.parameters()):
-        target_param.data.copy_(param.data)
+        target_param.data.copy_(param.data) #直接复制源网络的参数
 
 # https://github.com/seba-1511/dist_tuto.pth/blob/gh-pages/train_dist.py
 def average_gradients(model):
@@ -45,19 +45,27 @@ def init_processes(rank, size, fn, backend='gloo'):
     dist.init_process_group(backend, rank=rank, world_size=size)
     fn(rank, size)
 
+#实现ε-greedy策略
+#在选择动作时综合了贪婪（greedy）和探索
+#根据给定的logits（通常是一个代表动作值的向量）生成一个one-hot编码的动作向量
 def onehot_from_logits(logits, eps=0.0, dim=1):
     """
-    Given batch of logits, return one-hot sample using epsilon greedy strategy
+    Given batch of logits, return one-hot sample using epsilon greedy strategy 给定一批 logit，使用 epsilon 贪婪策略返回 one-hot sample
     (based on given epsilon)
     """
     # get best (according to current policy) actions in one-hot form
+    #找到在当前策略下最佳的动作，即logits中概率最大的动作，然后将其转换为one-hot形式
+    #在给定维度（默认为1）上计算 logits 张量的最大值
+    #即将概率最大的动作位置设置为1，其他位置设置为0
+    #float() 是一个类型转换操作，将布尔型张量转换为浮点型张量，将 True 转换为1.0，False 转换为0.0
+    #argmax_acs 是一个浮点型张量，其形状与 logits 相同，其中最大值所在位置的元素为1.0，其他位置的元素为0.0
     argmax_acs = (logits == logits.max(dim, keepdim=True)[0]).float()
-    if eps == 0.0:
+    if eps == 0.0: #ε的值为0，表示完全按照贪婪策略选择动作，直接返回上一步得到的one-hot编码的动作
         return argmax_acs
-    # get random actions in one-hot form
+    #
     rand_acs = Variable(torch.eye(logits.shape[1])[[np.random.choice(
         range(logits.shape[1]), size=logits.shape[0])]], requires_grad=False)
-    # chooses between best and random actions using epsilon greedy
+    # 使用 epsilon greedy 在最佳操作和随机操作之间进行选择
     return torch.stack([argmax_acs[i] if r > eps else rand_acs[i] for i, r in
                         enumerate(torch.rand(logits.shape[0]))])
 

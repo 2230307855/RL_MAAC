@@ -3,43 +3,54 @@ import torch.nn as nn
 import torch.nn.functional as F
 from utils.misc import onehot_from_logits, categorical_sample
 
+#定义了一个名为 BasePolicy 的PyTorch神经网络模型
 class BasePolicy(nn.Module):
     """
-    Base policy network
+    基础策略网络
     """
     def __init__(self, input_dim, out_dim, hidden_dim=64, nonlin=F.leaky_relu,
                  norm_in=True, onehot_dim=0):
         """
         Inputs:
-            input_dim (int): Number of dimensions in input
-            out_dim (int): Number of dimensions in output
-            hidden_dim (int): Number of hidden dimensions
-            nonlin (PyTorch function): Nonlinearity to apply to hidden layers
+            input_dim（int）: 输入特征的维度
+            out_dim（int）: 输出特征的维度
+            hidden_dim（int，默认为64）: 隐藏层的维度
+            nonlin（PyTorch激活函数，默认为F.leaky_relu）: 隐藏层的非线性激活函数
+            norm_in（布尔值，默认为True）: 是否对输入进行批量归一化
+            onehot_dim（int，默认为0）: 如果有one-hot编码的特征，指定其维度
         """
-        super(BasePolicy, self).__init__()
+        super(BasePolicy, self).__init__() #初始化nn的基本功能
 
-        if norm_in:  # normalize inputs
+        if norm_in:#如果norm_in为True，创建一个nn.BatchNorm1d层，用于对输入进行批量归一化
+            #类的实例就拥有了一个一维批归一化层，可以在后续的代码中使用该层对输入进行归一化操作
             self.in_fn = nn.BatchNorm1d(input_dim, affine=False)
         else:
+            #self.in_fn 被赋值为 lambda x: x，其中 x 是输入参数。
+            #lambda 函数的主体部分是 x，它直接返回输入值 x，因此该函数实现了一个恒等映射
             self.in_fn = lambda x: x
         self.fc1 = nn.Linear(input_dim + onehot_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
         self.fc3 = nn.Linear(hidden_dim, out_dim)
         self.nonlin = nonlin
 
+    #前向传播函数
     def forward(self, X):
         """
         Inputs:
-            X (PyTorch Matrix): Batch of observations (optionally a tuple that
-                                additionally includes a onehot label)
+            X (PyTorch Matrix): 观测值批次（可选，还包括 onehot 标签的元组）
         Outputs:
-            out (PyTorch Matrix): Actions
+            out (PyTorch Matrix): 行为
         """
+        # 如果X是元组，将X的第一个元素（通常是观察值）赋值给X
+        # 并将元组的第二个元素（通常是one-hot编码）赋值给onehot
+        # X不是元组，则onehot保持为None
         onehot = None
         if type(X) is tuple:
             X, onehot = X
-        inp = self.in_fn(X)  # don't batchnorm onehot
+        inp = self.in_fn(X)  #在神经网络中用于归一化输入
         if onehot is not None:
+            #如果存在one-hot编码特征，将其与inp拼接在一起，形成新的输入。
+            # 在这里，torch.cat函数在第二维度（dim=1）上拼接输入
             inp = torch.cat((onehot, inp), dim=1)
         h1 = self.nonlin(self.fc1(inp))
         h2 = self.nonlin(self.fc2(h1))
@@ -47,7 +58,7 @@ class BasePolicy(nn.Module):
         return out
 
 
-class DiscretePolicy(BasePolicy):
+class DiscretePolicy(BasePolicy): #离散策略
     """
     Policy Network for discrete action spaces
     """
