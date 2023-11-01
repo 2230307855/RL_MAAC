@@ -62,10 +62,10 @@ def onehot_from_logits(logits, eps=0.0, dim=1):
     argmax_acs = (logits == logits.max(dim, keepdim=True)[0]).float()
     if eps == 0.0: #ε的值为0，表示完全按照贪婪策略选择动作，直接返回上一步得到的one-hot编码的动作
         return argmax_acs
-    #
+    #对于每一行，它随机选择一个动作的索引。
     rand_acs = Variable(torch.eye(logits.shape[1])[[np.random.choice(
         range(logits.shape[1]), size=logits.shape[0])]], requires_grad=False)
-    # 使用 epsilon greedy 在最佳操作和随机操作之间进行选择
+    #使用 epsilon greedy在最佳操作和随机操作之间进行选择
     return torch.stack([argmax_acs[i] if r > eps else rand_acs[i] for i, r in
                         enumerate(torch.rand(logits.shape[0]))])
 
@@ -105,12 +105,21 @@ def firmmax_sample(logits, temperature, dim=1):
     y = logits + sample_gumbel(logits.shape, tens_type=type(logits.data)) / temperature
     return F.softmax(y, dim=dim)
 
+#从一个给定的概率分布 probs 中进行多项式采样
+#函数将根据这个概率分布进行采样，返回采样得到的动作的索引和对应的 one-hot 编码
 def categorical_sample(probs, use_cuda=False):
+    #使用 multinomial 函数从 probs 中进行采样，每次只采样一个动作
+    #返回一个包含采样的动作索引的张量 int_acs
     int_acs = torch.multinomial(probs, 1)
+    #判断是否需要在 GPU 上计算
     if use_cuda:
         tensor_type = torch.cuda.FloatTensor
     else:
         tensor_type = torch.FloatTensor
+    #创建一个与 probs 同样形状的全零张量，并将其封装为Variable对象。
+    #这个张量将用于存储 one-hot 编码的动作
+    #使用 scatter_ 函数将 int_acs 中对应位置的值置为1，得到 one-hot 编码的动作
+    #scatter_(维度，索引，填充值) 哪个维度，哪个位置，撒什么点
     acs = Variable(tensor_type(*probs.shape).fill_(0)).scatter_(1, int_acs, 1)
     return int_acs, acs
 
