@@ -13,40 +13,40 @@ class AttentionSAC(object):
     task
     """
     def __init__(self, agent_init_params, sa_size,
-                 gamma=0.95, tau=0.01, pi_lr=0.01, q_lr=0.01,
-                 reward_scale=10.,
-                 pol_hidden_dim=128,
-                 critic_hidden_dim=128, attend_heads=4,
+                gamma=0.95, tau=0.01, pi_lr=0.01, q_lr=0.01,
+                reward_scale=10.,
+                pol_hidden_dim=128,
+                critic_hidden_dim=128, attend_heads=4,
                  **kwargs):
         """
         Inputs:
             agent_init_params (list of dict): List of dicts with parameters to
-                                              initialize each agent
+                                            initialize each agent
                 num_in_pol (int): Input dimensions to policy
                 num_out_pol (int): Output dimensions to policy
             sa_size (list of (int, int)): Size of state and action space for
-                                          each agent
+                                        each agent
             gamma (float): Discount factor
             tau (float): Target update rate
             pi_lr (float): Learning rate for policy
             q_lr (float): Learning rate for critic
             reward_scale (float): Scaling for reward (has effect of optimal
-                                  policy entropy)
+                                policy entropy)
             hidden_dim (int): Number of hidden dimensions for networks
         """
         self.nagents = len(sa_size)
 
         self.agents = [AttentionAgent(lr=pi_lr,
-                                      hidden_dim=pol_hidden_dim,
+                                    hidden_dim=pol_hidden_dim,
                                       **params)
-                         for params in agent_init_params]
+                        for params in agent_init_params]
         self.critic = AttentionCritic(sa_size, hidden_dim=critic_hidden_dim,
-                                      attend_heads=attend_heads)
+                                    attend_heads=attend_heads)
         self.target_critic = AttentionCritic(sa_size, hidden_dim=critic_hidden_dim,
-                                             attend_heads=attend_heads)
+                                            attend_heads=attend_heads)
         hard_update(self.target_critic, self.critic)
         self.critic_optimizer = Adam(self.critic.parameters(), lr=q_lr,
-                                     weight_decay=1e-3)
+                                    weight_decay=1e-3)
         self.agent_init_params = agent_init_params
         self.gamma = gamma
         self.tau = tau
@@ -76,7 +76,7 @@ class AttentionSAC(object):
             actions: List of actions for each agent
         """
         return [a.step(obs, explore=explore) for a, obs in zip(self.agents,
-                                                               observations)]
+                                                            observations)]
 
     def update_critic(self, sample, soft=True, logger=None, **kwargs):
         """
@@ -94,10 +94,10 @@ class AttentionSAC(object):
         critic_in = list(zip(obs, acs))
         next_qs = self.target_critic(trgt_critic_in)
         critic_rets = self.critic(critic_in, regularize=True,
-                                  logger=logger, niter=self.niter)
+                                logger=logger, niter=self.niter)
         q_loss = 0
         for a_i, nq, log_pi, (pq, regs) in zip(range(self.nagents), next_qs,
-                                               next_log_pis, critic_rets):
+                                            next_log_pis, critic_rets):
             target_q = (rews[a_i].view(-1, 1) +
                         self.gamma * nq *
                         (1 - dones[a_i].view(-1, 1)))
@@ -130,7 +130,7 @@ class AttentionSAC(object):
                 ob, return_all_probs=True, return_log_pi=True,
                 regularize=True, return_entropy=True)
             logger.add_scalar('agent%i/policy_entropy' % a_i, ent,
-                              self.niter)
+                            self.niter)
             samp_acs.append(curr_ac)
             all_probs.append(probs)
             all_log_pis.append(log_pi)
@@ -162,9 +162,9 @@ class AttentionSAC(object):
 
             if logger is not None:
                 logger.add_scalar('agent%i/losses/pol_loss' % a_i,
-                                  pol_loss, self.niter)
+                                pol_loss, self.niter)
                 logger.add_scalar('agent%i/grad_norms/pi' % a_i,
-                                  grad_norm, self.niter)
+                                grad_norm, self.niter)
 
 
     def update_all_targets(self):
@@ -220,17 +220,17 @@ class AttentionSAC(object):
         """
         self.prep_training(device='cpu')  # move parameters to CPU before saving
         save_dict = {'init_dict': self.init_dict,
-                     'agent_params': [a.get_params() for a in self.agents],
-                     'critic_params': {'critic': self.critic.state_dict(),
-                                       'target_critic': self.target_critic.state_dict(),
-                                       'critic_optimizer': self.critic_optimizer.state_dict()}}
+                    'agent_params': [a.get_params() for a in self.agents],
+                    'critic_params': {'critic': self.critic.state_dict(),
+                                    'target_critic': self.target_critic.state_dict(),
+                                    'critic_optimizer': self.critic_optimizer.state_dict()}}
         torch.save(save_dict, filename)
 
     @classmethod
     def init_from_env(cls, env, gamma=0.95, tau=0.01,
-                      pi_lr=0.01, q_lr=0.01,
-                      reward_scale=10.,
-                      pol_hidden_dim=128, critic_hidden_dim=128, attend_heads=4,
+                    pi_lr=0.01, q_lr=0.01,
+                    reward_scale=10.,
+                    pol_hidden_dim=128, critic_hidden_dim=128, attend_heads=4,
                       **kwargs):
         """
         Instantiate instance of this class from multi-agent environment
@@ -244,19 +244,19 @@ class AttentionSAC(object):
         agent_init_params = []
         sa_size = []
         for acsp, obsp in zip(env.action_space,
-                              env.observation_space):
+                            env.observation_space):
             agent_init_params.append({'num_in_pol': obsp.shape[0],
-                                      'num_out_pol': acsp.n})
+                                    'num_out_pol': acsp.n})
             sa_size.append((obsp.shape[0], acsp.n))
 
         init_dict = {'gamma': gamma, 'tau': tau,
-                     'pi_lr': pi_lr, 'q_lr': q_lr,
-                     'reward_scale': reward_scale,
-                     'pol_hidden_dim': pol_hidden_dim,
-                     'critic_hidden_dim': critic_hidden_dim,
-                     'attend_heads': attend_heads,
-                     'agent_init_params': agent_init_params,
-                     'sa_size': sa_size}
+                    'pi_lr': pi_lr, 'q_lr': q_lr,
+                    'reward_scale': reward_scale,
+                    'pol_hidden_dim': pol_hidden_dim,
+                    'critic_hidden_dim': critic_hidden_dim,
+                    'attend_heads': attend_heads,
+                    'agent_init_params': agent_init_params,
+                    'sa_size': sa_size}
         instance = cls(**init_dict)
         instance.init_dict = init_dict
         return instance

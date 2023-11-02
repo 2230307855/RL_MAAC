@@ -80,12 +80,12 @@ class DiscretePolicy(BasePolicy): #离散策略
                 return_log_pi=False, regularize=False,
                 return_entropy=False):
         out = super(DiscretePolicy, self).forward(obs)
-        #
+
         probs = F.softmax(out, dim=1)
         # 检查模型参数是否在GPU上，用于后续操作的设备选择
         on_gpu = next(self.parameters()).is_cuda
         # 如果sample参数为True，表示需要从概率分布中采样动作
-        if sample: # ！！！
+        if sample:
             # 函数返回采样的动作的索引（int_act）和one-hot编码的动作（act）
             int_act, act = categorical_sample(probs, use_cuda=on_gpu)
         else:
@@ -99,7 +99,6 @@ class DiscretePolicy(BasePolicy): #离散策略
             rets.append(probs) # 将所有动作的概率分布添加到rets列表
         if return_log_pi:
             # return log probability of selected action
-            # ！！！
             rets.append(log_probs.gather(1, int_act))
         if regularize:
             #计算输出的平方的均值，通常作为正则化项添加到rets列表中

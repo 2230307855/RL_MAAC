@@ -87,10 +87,11 @@ class ReplayBuffer(object):
                 ret_rews,
                 [cast(self.next_obs_buffs[i][inds]) for i in range(self.num_agents)],
                 [cast(self.done_buffs[i][inds]) for i in range(self.num_agents)])
-
+    # 返回一个列表，列表中的每个元素表示每个代理在最近 N 步中的平均回报
     def get_average_rewards(self, N):
-        if self.filled_i == self.max_steps:
-            inds = np.arange(self.curr_i - N, self.curr_i)  # allow for negative indexing
+        if self.filled_i == self.max_steps: # 检查回放缓冲区是否已填满，即收集的经验数据是否已达到最大步数 max_steps
+            inds = np.arange(self.curr_i - N, self.curr_i)# 如果回放缓冲区已填满，则从当前索引 curr_i 向前取最近的N个步骤的索引
         else:
+            # 如果回放缓冲区未填满，则从当前索引 curr_i 向前取最近的 N 个步骤的索引。如果 self.curr_i - N 小于 0，则将索引截断为 0
             inds = np.arange(max(0, self.curr_i - N), self.curr_i)
         return [self.rew_buffs[i][inds].mean() for i in range(self.num_agents)]

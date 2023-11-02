@@ -8,8 +8,7 @@ import numpy as np
 # https://github.com/ikostrikov/pytorch-ddpg-naf/blob/master/ddpg.py#L11
 def soft_update(target, source, tau):
     """
-    Perform DDPG soft update (move target params toward source based on weight
-    factor tau) 执行 DDPG 软更新（根据权重因子 tau 将目标参数移向源）
+        执行 DDPG 软更新（根据权重因子 tau 将目标参数移向源）
     Inputs:
         target (torch.nn.Module): Net to copy parameters to
         source (torch.nn.Module): Net whose parameters to copy
@@ -121,7 +120,7 @@ def categorical_sample(probs, use_cuda=False):
     #使用 scatter_ 函数将 int_acs 中对应位置的值置为1，得到 one-hot 编码的动作
     #scatter_(维度，索引，填充值) 哪个维度，哪个位置，撒什么点
     acs = Variable(tensor_type(*probs.shape).fill_(0)).scatter_(1, int_acs, 1)
-    return int_acs, acs
+    return int_acs,acs
 
 def disable_gradients(module):
     for p in module.parameters():

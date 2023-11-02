@@ -15,7 +15,7 @@ class AttentionCritic(nn.Module):
         """
         Inputs:
             sa_sizes (list of (int, int)): Size of state and action spaces per
-                                          agent
+                                        agent
             hidden_dim (int): Number of hidden dimensions
             norm_in (bool): Whether to apply BatchNorm to input
             attend_heads (int): Number of attention heads to use (use a number
@@ -44,7 +44,7 @@ class AttentionCritic(nn.Module):
             self.critic_encoders.append(encoder)
             critic = nn.Sequential()
             critic.add_module('critic_fc1', nn.Linear(2 * hidden_dim,
-                                                      hidden_dim))
+                                                    hidden_dim))
             critic.add_module('critic_nl', nn.LeakyReLU())
             critic.add_module('critic_fc2', nn.Linear(hidden_dim, odim))
             self.critics.append(critic)
@@ -67,10 +67,10 @@ class AttentionCritic(nn.Module):
             self.selector_extractors.append(nn.Linear(hidden_dim, attend_dim, bias=False))
             self.value_extractors.append(nn.Sequential(nn.Linear(hidden_dim,
                                                                 attend_dim),
-                                                       nn.LeakyReLU()))
+                                                    nn.LeakyReLU()))
 
         self.shared_modules = [self.key_extractors, self.selector_extractors,
-                               self.value_extractors, self.critic_encoders]
+                            self.value_extractors, self.critic_encoders]
 
     def shared_parameters(self):
         """
@@ -91,15 +91,15 @@ class AttentionCritic(nn.Module):
         """
         Inputs:
             inps (list of PyTorch Matrices): Inputs to each agents' encoder
-                                             (batch of obs + ac)
+                                            (batch of obs + ac)
             agents (int): indices of agents to return Q for
             return_q (bool): return Q-value
             return_all_q (bool): return Q-value for all actions
             regularize (bool): returns values to add to loss function for
-                               regularization
+                            regularization
             return_attend (bool): return attention weights per agent
             logger (TensorboardX SummaryWriter): If passed in, important values
-                                                 are logged
+                                                are logged
         """
         if agents is None:
             agents = range(len(self.critic_encoders))
@@ -116,7 +116,7 @@ class AttentionCritic(nn.Module):
         all_head_values = [[v_ext(enc) for enc in sa_encodings] for v_ext in self.value_extractors]
         # extract selectors for each head for each agent that we're returning Q for
         all_head_selectors = [[sel_ext(enc) for i, enc in enumerate(s_encodings) if i in agents]
-                              for sel_ext in self.selector_extractors]
+                            for sel_ext in self.selector_extractors]
 
         other_all_values = [[] for _ in range(len(agents))]
         all_attend_logits = [[] for _ in range(len(agents))]
@@ -130,7 +130,7 @@ class AttentionCritic(nn.Module):
                 values = [v for j, v in enumerate(curr_head_values) if j != a_i]
                 # calculate attention across agents
                 attend_logits = torch.matmul(selector.view(selector.shape[0], 1, -1),
-                                             torch.stack(keys).permute(1, 2, 0))
+                                            torch.stack(keys).permute(1, 2, 0))
                 # scale dot-products by size of key (from Attention is All You Need)
                 scaled_attend_logits = attend_logits / np.sqrt(keys[0].shape[1])
                 attend_weights = F.softmax(scaled_attend_logits, dim=2)
@@ -143,7 +143,7 @@ class AttentionCritic(nn.Module):
         all_rets = []
         for i, a_i in enumerate(agents):
             head_entropies = [(-((probs + 1e-8).log() * probs).squeeze().sum(1)
-                               .mean()) for probs in all_attend_probs[i]]
+                            .mean()) for probs in all_attend_probs[i]]
             agent_rets = []
             critic_in = torch.cat((s_encodings[i], *other_all_values[i]), dim=1)
             all_q = self.critics[a_i](critic_in)
@@ -163,9 +163,9 @@ class AttentionCritic(nn.Module):
                 agent_rets.append(np.array(all_attend_probs[i]))
             if logger is not None:
                 logger.add_scalars('agent%i/attention' % a_i,
-                                   dict(('head%i_entropy' % h_i, ent) for h_i, ent
+                                dict(('head%i_entropy' % h_i, ent) for h_i, ent
                                         in enumerate(head_entropies)),
-                                   niter)
+                                niter)
             if len(agent_rets) == 1:
                 all_rets.append(agent_rets[0])
             else:
