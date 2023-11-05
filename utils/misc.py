@@ -122,11 +122,11 @@ def categorical_sample(probs, use_cuda=False):
     acs = Variable(tensor_type(*probs.shape).fill_(0)).scatter_(1, int_acs, 1)
     return int_acs,acs
 
-def disable_gradients(module):
+def disable_gradients(module): # 不让模块中的参数进行梯度累积
     for p in module.parameters():
         p.requires_grad = False
 
-def enable_gradients(module):
+def enable_gradients(module): # 让模块中的参数进行梯度累积
     for p in module.parameters():
         p.requires_grad = True
 
